@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as TipsRouteImport } from './routes/tips'
+import { Route as AuthenticatedDonateRouteImport } from './routes/_authenticated/donate'
 import { Route as AuthenticatedLogRouteImport } from './routes/_authenticated/log'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,9 +36,19 @@ const TipsRoute = TipsRouteImport.update({
   path: '/tips',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDonateRoute = AuthenticatedDonateRouteImport.update({
+  id: '/donate',
+  path: '/donate',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLogRoute = AuthenticatedLogRouteImport.update({
   id: '/log',
   path: '/log',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
@@ -44,13 +56,17 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/tips': typeof TipsRoute
+  '/donate': typeof AuthenticatedDonateRoute
   '/log': typeof AuthenticatedLogRoute
+  '/reports': typeof AuthenticatedReportsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/tips': typeof TipsRoute
+  '/donate': typeof AuthenticatedDonateRoute
   '/log': typeof AuthenticatedLogRoute
+  '/reports': typeof AuthenticatedReportsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,20 +74,24 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/tips': typeof TipsRoute
+  '/_authenticated/donate': typeof AuthenticatedDonateRoute
   '/_authenticated/log': typeof AuthenticatedLogRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/tips' | '/log'
+  fullPaths: '/' | '/auth' | '/tips' | '/donate' | '/log' | '/reports'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/tips' | '/log'
+  to: '/' | '/auth' | '/tips' | '/donate' | '/log' | '/reports'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/tips'
+    | '/_authenticated/donate'
     | '/_authenticated/log'
+    | '/_authenticated/reports'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -111,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TipsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/donate': {
+      id: '/_authenticated/donate'
+      path: '/donate'
+      fullPath: '/donate'
+      preLoaderRoute: typeof AuthenticatedDonateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/log': {
       id: '/_authenticated/log'
       path: '/log'
@@ -118,15 +145,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLogRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDonateRoute: typeof AuthenticatedDonateRoute
   AuthenticatedLogRoute: typeof AuthenticatedLogRoute
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDonateRoute: AuthenticatedDonateRoute,
   AuthenticatedLogRoute: AuthenticatedLogRoute,
+  AuthenticatedReportsRoute: AuthenticatedReportsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
