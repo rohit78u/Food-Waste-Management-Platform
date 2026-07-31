@@ -14,16 +14,344 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      collector_applications: {
+        Row: {
+          contact_phone: string
+          created_at: string
+          id: string
+          note: string | null
+          organization: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          service_area: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_phone: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          organization: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          service_area?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_phone?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          organization?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          service_area?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      donations: {
+        Row: {
+          address_line: string
+          approx_lat: number
+          approx_lng: number
+          best_before: string | null
+          city: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          collected_at: string | null
+          contact_phone: string | null
+          created_at: string
+          description: string | null
+          donor_id: string
+          food_type: string
+          id: string
+          lat: number
+          lng: number
+          pickup_from: string
+          pickup_until: string
+          quantity: number
+          status: Database["public"]["Enums"]["donation_status"]
+          title: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          address_line: string
+          approx_lat: number
+          approx_lng: number
+          best_before?: string | null
+          city?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          collected_at?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          donor_id: string
+          food_type: string
+          id?: string
+          lat: number
+          lng: number
+          pickup_from: string
+          pickup_until: string
+          quantity: number
+          status?: Database["public"]["Enums"]["donation_status"]
+          title: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          address_line?: string
+          approx_lat?: number
+          approx_lng?: number
+          best_before?: string | null
+          city?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          collected_at?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          donor_id?: string
+          food_type?: string
+          id?: string
+          lat?: number
+          lng?: number
+          pickup_from?: string
+          pickup_until?: string
+          quantity?: number
+          status?: Database["public"]["Enums"]["donation_status"]
+          title?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pickup_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          code_plain: string
+          created_at: string
+          donation_id: string
+          expires_at: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          code_plain: string
+          created_at?: string
+          donation_id: string
+          expires_at: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          code_plain?: string
+          created_at?: string
+          donation_id?: string
+          expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pickup_codes_donation_id_fkey"
+            columns: ["donation_id"]
+            isOneToOne: true
+            referencedRelation: "donations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          organization: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tip_completions: {
+        Row: {
+          created_at: string
+          id: string
+          tip_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tip_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tip_completions_tip_id_fkey"
+            columns: ["tip_id"]
+            isOneToOne: false
+            referencedRelation: "tips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tips: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          body: string
+          category: string
+          created_at?: string
+          id?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      waste_entries: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          item: string
+          note: string | null
+          quantity: number
+          reason: string
+          unit: string
+          updated_at: string
+          user_id: string
+          wasted_on: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          item: string
+          note?: string | null
+          quantity: number
+          reason: string
+          unit?: string
+          updated_at?: string
+          user_id: string
+          wasted_on?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          item?: string
+          note?: string | null
+          quantity?: number
+          reason?: string
+          unit?: string
+          updated_at?: string
+          user_id?: string
+          wasted_on?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      list_open_donations: {
+        Args: never
+        Returns: {
+          approx_lat: number
+          approx_lng: number
+          best_before: string
+          city: string
+          created_at: string
+          description: string
+          food_type: string
+          id: string
+          pickup_from: string
+          pickup_until: string
+          quantity: number
+          title: string
+          unit: string
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "donor" | "collector" | "admin"
+      application_status: "pending" | "approved" | "rejected"
+      donation_status:
+        | "open"
+        | "claimed"
+        | "collected"
+        | "cancelled"
+        | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +478,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["donor", "collector", "admin"],
+      application_status: ["pending", "approved", "rejected"],
+      donation_status: ["open", "claimed", "collected", "cancelled", "expired"],
+    },
   },
 } as const
