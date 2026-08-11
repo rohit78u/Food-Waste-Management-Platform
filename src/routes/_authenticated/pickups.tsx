@@ -3,10 +3,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { BadgeCheck, MapPin } from "lucide-react";
+import { BadgeCheck, CalendarClock, MapPin, ShieldAlert, ShieldCheck } from "lucide-react";
 import { applyAsCollector, getCollectorStatus } from "@/lib/collectors.functions";
-import { claimDonation, listMyClaims, listOpenDonations, verifyPickupCode } from "@/lib/donations.functions";
+import {
+  claimDonation,
+  listMyClaims,
+  listOpenDonations,
+  schedulePickup,
+  verifyPickupCode,
+} from "@/lib/donations.functions";
 import { MapPreview } from "@/components/MapPreview";
+import { PickupTimeline } from "@/components/PickupTimeline";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +45,8 @@ function PickupsPage() {
   const fetchClaims = useServerFn(listMyClaims);
   const claim = useServerFn(claimDonation);
   const verify = useServerFn(verifyPickupCode);
+  const schedule = useServerFn(schedulePickup);
+
 
   const status = useQuery({ queryKey: ["collector-status"], queryFn: () => fetchStatus() });
   const isCollector = status.data?.isCollector ?? false;
@@ -59,6 +69,8 @@ function PickupsPage() {
     note: "",
   });
   const [codeInputs, setCodeInputs] = useState<Record<string, string>>({});
+  const [schedules, setSchedules] = useState<Record<string, string>>({});
+
 
   const submitApplication = useMutation({
     mutationFn: () =>
