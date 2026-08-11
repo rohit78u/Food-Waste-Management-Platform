@@ -50,6 +50,9 @@ function DonatePage() {
   const create = useServerFn(createDonation);
   const cancel = useServerFn(cancelDonation);
   const revealCode = useServerFn(getPickupCode);
+  const schedule = useServerFn(schedulePickup);
+  const recheckAddress = useServerFn(verifyDonationAddress);
+
 
   const [form, setForm] = useState({
     title: "",
@@ -67,6 +70,8 @@ function DonatePage() {
     lng: "",
   });
   const [codes, setCodes] = useState<Record<string, string>>({});
+  const [schedules, setSchedules] = useState<Record<string, string>>({});
+
 
   const mine = useQuery({ queryKey: ["my-donations"], queryFn: () => fetchMine() });
 
@@ -103,7 +108,29 @@ function DonatePage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const book = useMutation({
+    mutationFn: (input: { id: string; scheduled_at: string }) => schedule({ data: input }),
+    onSuccess: (_result, input) => {
+      toast.success("Pickup time saved. The collector has been notified.");
+      queryClient.invalidateQueries({ queryKey: ["my-donations"] });
+      queryClient.invalidateQueries({ queryKey: ["pickup-events", input.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const recheck = useMutation({
+    mutationFn: (id: string) => recheckAddress({ data: { id } }),
+    onSuccess: (result, id) => {
+      if (result.verified) toast.success(result.reason);
+      else toast.error(result.reason);
+      queryClient.invalidateQueries({ queryKey: ["my-donations"] });
+      queryClient.invalidateQueries({ queryKey: ["pickup-events", id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const reveal = useMutation({
+
     mutationFn: (id: string) => revealCode({ data: { id } }),
     onSuccess: (result, id) => {
       if (!result.code) {
