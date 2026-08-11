@@ -1,17 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { BadgeCheck, CalendarClock, MapPin, ShieldAlert, ShieldCheck } from "lucide-react";
-import { applyAsCollector, getCollectorStatus } from "@/lib/collectors.functions";
 import {
   claimDonation,
+  createCollectorApplication,
+  getCollectorStatus,
   listMyClaims,
   listOpenDonations,
   schedulePickup,
   verifyPickupCode,
-} from "@/lib/donations.functions";
+} from "@/lib/api";
 import { MapPreview } from "@/components/MapPreview";
 import { PickupTimeline } from "@/components/PickupTimeline";
 
@@ -39,26 +39,18 @@ export const Route = createFileRoute("/_authenticated/pickups")({
 
 function PickupsPage() {
   const queryClient = useQueryClient();
-  const fetchStatus = useServerFn(getCollectorStatus);
-  const apply = useServerFn(applyAsCollector);
-  const fetchOpen = useServerFn(listOpenDonations);
-  const fetchClaims = useServerFn(listMyClaims);
-  const claim = useServerFn(claimDonation);
-  const verify = useServerFn(verifyPickupCode);
-  const schedule = useServerFn(schedulePickup);
 
-
-  const status = useQuery({ queryKey: ["collector-status"], queryFn: () => fetchStatus() });
+  const status = useQuery({ queryKey: ["collector-status"], queryFn: () => getCollectorStatus() });
   const isCollector = status.data?.isCollector ?? false;
 
   const open = useQuery({
     queryKey: ["open-donations"],
-    queryFn: () => fetchOpen(),
+    queryFn: () => listOpenDonations(),
     enabled: isCollector,
   });
   const claims = useQuery({
     queryKey: ["my-claims"],
-    queryFn: () => fetchClaims(),
+    queryFn: () => listMyClaims(),
     enabled: isCollector,
   });
 
@@ -74,13 +66,11 @@ function PickupsPage() {
 
   const submitApplication = useMutation({
     mutationFn: () =>
-      apply({
-        data: {
-          organization: application.organization,
-          contact_phone: application.contact_phone,
-          service_area: application.service_area || null,
-          note: application.note || null,
-        },
+      createCollectorApplication({
+        organization: application.organization,
+        contact_phone: application.contact_phone,
+        service_area: application.service_area || null,
+        note: application.note || null,
       }),
     onSuccess: () => {
       toast.success("Application sent. We'll review it shortly.");
@@ -90,7 +80,7 @@ function PickupsPage() {
   });
 
   const claimOne = useMutation({
-    mutationFn: (id: string) => claim({ data: { id } }),
+    mutationFn: (id: string) => claimDonation(id),
     onSuccess: () => {
       toast.success("Claimed. The donor now has a handover code for you.");
       queryClient.invalidateQueries({ queryKey: ["open-donations"] });
@@ -100,7 +90,7 @@ function PickupsPage() {
   });
 
   const book = useMutation({
-    mutationFn: (input: { id: string; scheduled_at: string }) => schedule({ data: input }),
+    mutationFn: (input: { id: string; scheduled_at: string }) => schedulePickup(input.id, input.scheduled_at),
     onSuccess: (_result, input) => {
       toast.success("Pickup time saved. The donor has been notified.");
       queryClient.invalidateQueries({ queryKey: ["my-claims"] });
@@ -110,7 +100,7 @@ function PickupsPage() {
   });
 
   const confirm = useMutation({
-    mutationFn: ({ id, code }: { id: string; code: string }) => verify({ data: { id, code } }),
+    mutationFn: ({ id, code }: { id: string; code: string }) => verifyPickupCode(id, code),
     onSuccess: (_result, input) => {
       toast.success("Pickup confirmed. Thank you!");
       queryClient.invalidateQueries({ queryKey: ["my-claims"] });

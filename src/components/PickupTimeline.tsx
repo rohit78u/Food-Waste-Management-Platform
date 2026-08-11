@@ -1,13 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { listPickupEvents } from "@/lib/donations.functions";
+import { listPickupEvents } from "@/lib/api";
 
 /** Chronological status trail for one donation. */
 export function PickupTimeline({ donationId }: { donationId: string }) {
-  const fetchEvents = useServerFn(listPickupEvents);
   const events = useQuery({
     queryKey: ["pickup-events", donationId],
-    queryFn: () => fetchEvents({ data: { id: donationId } }),
+    queryFn: () => listPickupEvents(donationId),
   });
 
   if (events.isLoading) return <p className="mt-3 text-xs text-muted-foreground">Loading history…</p>;

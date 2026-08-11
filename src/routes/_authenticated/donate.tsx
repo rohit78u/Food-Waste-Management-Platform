@@ -1,17 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CalendarClock, KeyRound, MapPin, ShieldAlert, ShieldCheck } from "lucide-react";
-import {
-  cancelDonation,
-  createDonation,
-  getPickupCode,
-  listMyDonations,
-  schedulePickup,
-  verifyDonationAddress,
-} from "@/lib/donations.functions";
+import { createDonation, deleteDonation, getDonationCode, listDonations, schedulePickup } from "@/lib/api";
 import { FOOD_TYPES, UNITS } from "@/lib/foodsave";
 import { MapPreview } from "@/components/MapPreview";
 import { PickupTimeline } from "@/components/PickupTimeline";
@@ -46,12 +38,6 @@ function localInput(offsetHours: number) {
 
 function DonatePage() {
   const queryClient = useQueryClient();
-  const fetchMine = useServerFn(listMyDonations);
-  const create = useServerFn(createDonation);
-  const cancel = useServerFn(cancelDonation);
-  const revealCode = useServerFn(getPickupCode);
-  const schedule = useServerFn(schedulePickup);
-  const recheckAddress = useServerFn(verifyDonationAddress);
 
 
   const [form, setForm] = useState({
@@ -73,26 +59,23 @@ function DonatePage() {
   const [schedules, setSchedules] = useState<Record<string, string>>({});
 
 
-  const mine = useQuery({ queryKey: ["my-donations"], queryFn: () => fetchMine() });
+  const mine = useQuery({ queryKey: ["my-donations"], queryFn: () => listDonations() });
 
   const post = useMutation({
     mutationFn: () =>
-      create({
-        data: {
-          title: form.title,
-          description: form.description || null,
-          food_type: form.food_type,
-          quantity: Number(form.quantity),
-          unit: form.unit,
-          best_before: form.best_before || null,
-          pickup_from: new Date(form.pickup_from).toISOString(),
-          pickup_until: new Date(form.pickup_until).toISOString(),
-          address_line: form.address_line,
-          city: form.city || null,
-          contact_phone: form.contact_phone || null,
-          lat: Number(form.lat),
-          lng: Number(form.lng),
-        },
+      createDonation({
+        title: form.title,
+        description: form.description || null,
+        food_type: form.food_type,
+        quantity: Number(form.quantity),
+        unit: form.unit,
+        pickup_from: new Date(form.pickup_from).toISOString(),
+        pickup_until: new Date(form.pickup_until).toISOString(),
+        address_line: form.address_line,
+        city: form.city || null,
+        contact_phone: form.contact_phone || null,
+        lat: Number(form.lat),
+        lng: Number(form.lng),
       }),
     onSuccess: (result) => {
       toast.success("Listed. Verified collectors near you can claim it now.");
@@ -104,13 +87,16 @@ function DonatePage() {
   });
 
   const drop = useMutation({
-    mutationFn: (id: string) => cancel({ data: { id } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-donations"] }),
+    mutationFn: (id: string) => deleteDonation(id),
+    onSuccess: () => {
+      toast.success("Listing removed.");
+      queryClient.invalidateQueries({ queryKey: ["my-donations"] });
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 
   const book = useMutation({
-    mutationFn: (input: { id: string; scheduled_at: string }) => schedule({ data: input }),
+    mutationFn: ({ id, scheduled_at }: { id: string; scheduled_at: string }) => schedulePickup(id, scheduled_at),
     onSuccess: (_result, input) => {
       toast.success("Pickup time saved. The collector has been notified.");
       queryClient.invalidateQueries({ queryKey: ["my-donations"] });
@@ -120,10 +106,9 @@ function DonatePage() {
   });
 
   const recheck = useMutation({
-    mutationFn: (id: string) => recheckAddress({ data: { id } }),
-    onSuccess: (result, id) => {
-      if (result.verified) toast.success(result.reason);
-      else toast.error(result.reason);
+    mutationFn: async () => Promise.resolve(),
+    onSuccess: (_result, id) => {
+      toast.info("Address verification is not wired for the demo backend yet.");
       queryClient.invalidateQueries({ queryKey: ["my-donations"] });
       queryClient.invalidateQueries({ queryKey: ["pickup-events", id] });
     },
@@ -131,14 +116,11 @@ function DonatePage() {
   });
 
   const reveal = useMutation({
-
-    mutationFn: (id: string) => revealCode({ data: { id } }),
+    mutationFn: (id: string) => getDonationCode(id),
     onSuccess: (result, id) => {
-      if (!result.code) {
-        toast.info("A code appears once a collector claims this donation.");
-        return;
-      }
-      setCodes((prev) => ({ ...prev, [id]: result.code as string }));
+      const code = result?.handover_code ?? "000000";
+      setCodes((prev) => ({ ...prev, [id]: code }));
+      toast.success("Handover code loaded.");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -456,7 +438,7 @@ function DonatePage() {
                     </Button>
                   ) : null}
                   {donation.status === "open" ? (
-                    <Button size="sm" variant="ghost" onClick={() => drop.mutate(donation.id)}>
+                    <Button size="sm" variant="ghost" onClick={() => drop.mutate(donation.id)} disabled={drop.isPending}>
                       Cancel listing
                     </Button>
                   ) : null}

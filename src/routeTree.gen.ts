@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as TipsRouteImport } from './routes/tips'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDonateRouteImport } from './routes/_authenticated/donate'
 import { Route as AuthenticatedLogRouteImport } from './routes/_authenticated/log'
 import { Route as AuthenticatedPickupsRouteImport } from './routes/_authenticated/pickups'
@@ -36,6 +37,11 @@ const TipsRoute = TipsRouteImport.update({
   id: '/tips',
   path: '/tips',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDonateRoute = AuthenticatedDonateRouteImport.update({
   id: '/donate',
@@ -62,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/tips': typeof TipsRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/donate': typeof AuthenticatedDonateRoute
   '/log': typeof AuthenticatedLogRoute
   '/pickups': typeof AuthenticatedPickupsRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/tips': typeof TipsRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/donate': typeof AuthenticatedDonateRoute
   '/log': typeof AuthenticatedLogRoute
   '/pickups': typeof AuthenticatedPickupsRoute
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/tips': typeof TipsRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/donate': typeof AuthenticatedDonateRoute
   '/_authenticated/log': typeof AuthenticatedLogRoute
   '/_authenticated/pickups': typeof AuthenticatedPickupsRoute
@@ -90,15 +99,31 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/tips' | '/donate' | '/log' | '/pickups' | '/reports'
+    | '/'
+    | '/auth'
+    | '/tips'
+    | '/admin'
+    | '/donate'
+    | '/log'
+    | '/pickups'
+    | '/reports'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/tips' | '/donate' | '/log' | '/pickups' | '/reports'
+  to:
+    | '/'
+    | '/auth'
+    | '/tips'
+    | '/admin'
+    | '/donate'
+    | '/log'
+    | '/pickups'
+    | '/reports'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/tips'
+    | '/_authenticated/admin'
     | '/_authenticated/donate'
     | '/_authenticated/log'
     | '/_authenticated/pickups'
@@ -142,6 +167,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TipsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/donate': {
       id: '/_authenticated/donate'
       path: '/donate'
@@ -174,6 +206,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDonateRoute: typeof AuthenticatedDonateRoute
   AuthenticatedLogRoute: typeof AuthenticatedLogRoute
   AuthenticatedPickupsRoute: typeof AuthenticatedPickupsRoute
@@ -181,6 +214,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedDonateRoute: AuthenticatedDonateRoute,
   AuthenticatedLogRoute: AuthenticatedLogRoute,
   AuthenticatedPickupsRoute: AuthenticatedPickupsRoute,

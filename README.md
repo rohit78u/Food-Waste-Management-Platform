@@ -1,6 +1,6 @@
 # Food Save Tracker
 
-Create a new proje🌱 FoodSave - Food Waste Tracker
+🌱 FoodSave - Food Waste Tracker
 
 Reduce food waste, save resources, and track your environmental impact!
 
@@ -16,19 +16,7 @@ A simple yet powerful web application to help you track daily food waste, receiv
 
 📱 Responsive Design - Works seamlessly on desktop, tablet, and mobile devices
 
-🎨 User-Friendly Interface - Beautiful and intuitive design for easy navigationct with Cloud enabled.
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://foodsave-eco-tracker.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/60d1c25f-2bef-41ba-afed-8572566ebdde).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+🎨 User-Friendly Interface - Beautiful and intuitive design for easy navigation.
 
 ## Development
 

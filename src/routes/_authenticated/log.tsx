@@ -1,14 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
-import {
-  addWasteEntry,
-  deleteWasteEntry,
-  listWasteEntries,
-} from "@/lib/waste.functions";
+import { createWasteEntry, deleteWasteEntry, listWasteEntries } from "@/lib/api";
 import { UNITS, WASTE_CATEGORIES, WASTE_REASONS, impactOf, toKilograms, formatNumber } from "@/lib/foodsave";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,9 +29,6 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 function LogPage() {
   const queryClient = useQueryClient();
-  const fetchEntries = useServerFn(listWasteEntries);
-  const addEntry = useServerFn(addWasteEntry);
-  const removeEntry = useServerFn(deleteWasteEntry);
 
   const [item, setItem] = useState("");
   const [category, setCategory] = useState<string>("produce");
@@ -46,20 +38,18 @@ function LogPage() {
   const [wastedOn, setWastedOn] = useState(today());
   const [note, setNote] = useState("");
 
-  const entries = useQuery({ queryKey: ["waste-entries"], queryFn: () => fetchEntries() });
+  const entries = useQuery({ queryKey: ["waste-entries"], queryFn: () => listWasteEntries() });
 
   const create = useMutation({
     mutationFn: () =>
-      addEntry({
-        data: {
-          item,
-          category,
-          quantity: Number(quantity),
-          unit,
-          reason,
-          wasted_on: wastedOn,
-          note: note || null,
-        },
+      createWasteEntry({
+        item,
+        category,
+        quantity: Number(quantity),
+        unit,
+        reason,
+        wasted_on: wastedOn,
+        note: note || null,
       }),
     onSuccess: () => {
       toast.success("Logged. That is one more data point to work with.");
@@ -71,7 +61,7 @@ function LogPage() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => removeEntry({ data: { id } }),
+    mutationFn: (id: string) => deleteWasteEntry(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["waste-entries"] }),
     onError: (error: Error) => toast.error(error.message),
   });

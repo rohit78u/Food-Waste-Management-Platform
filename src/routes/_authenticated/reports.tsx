@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import {
   Bar,
@@ -16,7 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { Droplets, Factory, Scale, Wallet } from "lucide-react";
-import { listWasteEntries } from "@/lib/waste.functions";
+import { getReportSummary, listWasteEntries } from "@/lib/api";
 import { formatNumber, impactOf, toKilograms } from "@/lib/foodsave";
 import { Button } from "@/components/ui/button";
 
@@ -52,9 +51,9 @@ const PIE_COLORS = [
 ];
 
 function ReportsPage() {
-  const fetchEntries = useServerFn(listWasteEntries);
   const [range, setRange] = useState<number>(30);
-  const entries = useQuery({ queryKey: ["waste-entries"], queryFn: () => fetchEntries() });
+  const entries = useQuery({ queryKey: ["waste-entries"], queryFn: () => listWasteEntries() });
+  const summary = useQuery({ queryKey: ["report-summary", range], queryFn: () => getReportSummary(range) });
 
   const rows = useMemo(() => {
     const cutoff = new Date();
@@ -96,7 +95,7 @@ function ReportsPage() {
     .map((point) => ({ ...point, kg: Number(point.kg.toFixed(2)) }));
 
   const cards = [
-    { icon: Scale, label: "Food wasted", value: `${formatNumber(totals.kg, 2)} kg` },
+    { icon: Scale, label: "Food wasted", value: `${formatNumber(summary.data?.total_kg ?? totals.kg, 2)} kg` },
     { icon: Factory, label: "CO2 equivalent", value: `${formatNumber(totals.co2, 1)} kg` },
     { icon: Droplets, label: "Water footprint", value: `${formatNumber(totals.water, 0)} L` },
     { icon: Wallet, label: "Value binned", value: `${formatNumber(totals.money, 2)}` },

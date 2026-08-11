@@ -1,18 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Bell } from "lucide-react";
-import { listNotifications, markNotificationsRead } from "@/lib/notifications.functions";
+import { listNotifications, markNotificationsRead } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export function NotificationBell() {
   const queryClient = useQueryClient();
-  const fetchAll = useServerFn(listNotifications);
-  const markRead = useServerFn(markNotificationsRead);
 
   const notifications = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => fetchAll(),
+    queryFn: () => listNotifications(),
     refetchInterval: 30_000,
   });
 
@@ -20,7 +17,7 @@ export function NotificationBell() {
   const unread = rows.filter((n) => !n.read_at);
 
   const clear = useMutation({
-    mutationFn: () => markRead({ data: { ids: unread.map((n) => n.id).slice(0, 50) } }),
+    mutationFn: () => markNotificationsRead(),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 

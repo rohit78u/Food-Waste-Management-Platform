@@ -15,10 +15,11 @@ const NAV = [
   { to: "/donate", label: "Donate" },
   { to: "/pickups", label: "Pickups" },
   { to: "/tips", label: "Tips" },
+  { to: "/admin", label: "Admin" },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -43,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-2">
             <nav className="hidden items-center gap-1 md:flex">
-              {NAV.map((item) => (
+              {NAV.filter((item) => item.to !== "/admin" || isAdmin).map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
@@ -80,7 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         {open ? (
           <nav className="grid gap-1 border-t border-border/70 px-4 py-3 md:hidden">
-            {NAV.map((item) => (
+            {NAV.filter((item) => item.to !== "/admin" || isAdmin).map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
