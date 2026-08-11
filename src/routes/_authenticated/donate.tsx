@@ -3,15 +3,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { KeyRound, MapPin } from "lucide-react";
+import { CalendarClock, KeyRound, MapPin, ShieldAlert, ShieldCheck } from "lucide-react";
 import {
   cancelDonation,
   createDonation,
   getPickupCode,
   listMyDonations,
+  schedulePickup,
+  verifyDonationAddress,
 } from "@/lib/donations.functions";
 import { FOOD_TYPES, UNITS } from "@/lib/foodsave";
 import { MapPreview } from "@/components/MapPreview";
+import { PickupTimeline } from "@/components/PickupTimeline";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +50,9 @@ function DonatePage() {
   const create = useServerFn(createDonation);
   const cancel = useServerFn(cancelDonation);
   const revealCode = useServerFn(getPickupCode);
+  const schedule = useServerFn(schedulePickup);
+  const recheckAddress = useServerFn(verifyDonationAddress);
+
 
   const [form, setForm] = useState({
     title: "",
@@ -63,6 +70,8 @@ function DonatePage() {
     lng: "",
   });
   const [codes, setCodes] = useState<Record<string, string>>({});
+  const [schedules, setSchedules] = useState<Record<string, string>>({});
+
 
   const mine = useQuery({ queryKey: ["my-donations"], queryFn: () => fetchMine() });
 
@@ -85,8 +94,9 @@ function DonatePage() {
           lng: Number(form.lng),
         },
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast.success("Listed. Verified collectors near you can claim it now.");
+      if (!result.addressVerified) toast.warning(result.addressCheck);
       setForm((f) => ({ ...f, title: "", description: "" }));
       queryClient.invalidateQueries({ queryKey: ["my-donations"] });
     },
@@ -99,7 +109,29 @@ function DonatePage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const book = useMutation({
+    mutationFn: (input: { id: string; scheduled_at: string }) => schedule({ data: input }),
+    onSuccess: (_result, input) => {
+      toast.success("Pickup time saved. The collector has been notified.");
+      queryClient.invalidateQueries({ queryKey: ["my-donations"] });
+      queryClient.invalidateQueries({ queryKey: ["pickup-events", input.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const recheck = useMutation({
+    mutationFn: (id: string) => recheckAddress({ data: { id } }),
+    onSuccess: (result, id) => {
+      if (result.verified) toast.success(result.reason);
+      else toast.error(result.reason);
+      queryClient.invalidateQueries({ queryKey: ["my-donations"] });
+      queryClient.invalidateQueries({ queryKey: ["pickup-events", id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const reveal = useMutation({
+
     mutationFn: (id: string) => revealCode({ data: { id } }),
     onSuccess: (result, id) => {
       if (!result.code) {
@@ -316,16 +348,83 @@ function DonatePage() {
                       {new Date(donation.pickup_from).toLocaleString()} –{" "}
                       {new Date(donation.pickup_until).toLocaleTimeString()}
                     </p>
+                    {donation.scheduled_at ? (
+                      <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
+                        <CalendarClock className="h-3 w-3" /> Pickup at{" "}
+                        {new Date(donation.scheduled_at).toLocaleString()}
+                      </p>
+                    ) : null}
                   </div>
-                  <Badge variant={donation.status === "collected" ? "secondary" : "default"}>
-                    {donation.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge variant={donation.status === "collected" ? "secondary" : "default"}>
+                      {donation.status}
+                    </Badge>
+                    <Badge
+                      variant={donation.address_verified ? "secondary" : "outline"}
+                      className="gap-1"
+                    >
+                      {donation.address_verified ? (
+                        <ShieldCheck className="h-3 w-3" />
+                      ) : (
+                        <ShieldAlert className="h-3 w-3" />
+                      )}
+                      {donation.address_verified ? "address verified" : "address unverified"}
+                    </Badge>
+                  </div>
                 </div>
+
+                {donation.address_verified_label ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Matched: {donation.address_verified_label}
+                  </p>
+                ) : null}
+
+                {donation.status === "open" || donation.status === "claimed" ? (
+                  <form
+                    className="mt-4 flex flex-wrap items-end gap-3"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const value = schedules[donation.id];
+                      if (!value) {
+                        toast.error("Pick a pickup date and time first.");
+                        return;
+                      }
+                      book.mutate({ id: donation.id, scheduled_at: new Date(value).toISOString() });
+                    }}
+                  >
+                    <div className="grid gap-2">
+                      <Label htmlFor={`schedule-${donation.id}`}>Scheduled pickup time</Label>
+                      <Input
+                        id={`schedule-${donation.id}`}
+                        type="datetime-local"
+                        value={
+                          schedules[donation.id] ??
+                          (donation.scheduled_at
+                            ? new Date(
+                                new Date(donation.scheduled_at).getTime() -
+                                  new Date().getTimezoneOffset() * 60_000,
+                              )
+                                .toISOString()
+                                .slice(0, 16)
+                            : "")
+                        }
+                        onChange={(e) =>
+                          setSchedules((prev) => ({ ...prev, [donation.id]: e.target.value }))
+                        }
+                        className="w-56"
+                      />
+                    </div>
+                    <Button type="submit" size="sm" variant="outline" disabled={book.isPending}>
+                      Save time
+                    </Button>
+                  </form>
+                ) : null}
 
                 {donation.status === "claimed" ? (
                   <div className="mt-4 rounded-xl bg-secondary/50 p-4">
                     <p className="text-xs text-muted-foreground">
                       Read this code to the collector at handover — they enter it to close the pickup.
+                      It was also sent to your notifications.
                     </p>
                     {codes[donation.id] ? (
                       <p className="mt-2 font-mono text-3xl font-black tracking-[0.35em]">
@@ -344,18 +443,29 @@ function DonatePage() {
                   </div>
                 ) : null}
 
-                {donation.status === "open" ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="mt-3"
-                    onClick={() => drop.mutate(donation.id)}
-                  >
-                    Cancel listing
-                  </Button>
-                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {!donation.address_verified && donation.status !== "collected" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => recheck.mutate(donation.id)}
+                      disabled={recheck.isPending}
+                    >
+                      <ShieldCheck className="h-4 w-4" /> Verify address
+                    </Button>
+                  ) : null}
+                  {donation.status === "open" ? (
+                    <Button size="sm" variant="ghost" onClick={() => drop.mutate(donation.id)}>
+                      Cancel listing
+                    </Button>
+                  ) : null}
+                </div>
+
+                <PickupTimeline donationId={donation.id} />
               </li>
             ))}
+
           </ul>
         )}
       </section>
