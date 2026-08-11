@@ -29,6 +29,14 @@ export const createDonation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => donationSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { verifyAddressAgainstPin } = await import("@/lib/geocode.server");
+    const check = await verifyAddressAgainstPin({
+      address: data.address_line,
+      city: data.city ?? null,
+      lat: data.lat,
+      lng: data.lng,
+    });
+
     const { data: row, error } = await context.supabase
       .from("donations")
       .insert({
@@ -36,11 +44,138 @@ export const createDonation = createServerFn({ method: "POST" })
         donor_id: context.userId,
         approx_lat: coarsen(data.lat),
         approx_lng: coarsen(data.lng),
+        address_verified: check.verified,
+        address_verified_at: check.verified ? new Date().toISOString() : null,
+        address_verified_label: check.label,
       })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return { id: row.id };
+
+    const { logPickupEvent } = await import("@/lib/pickup-log.server");
+    await logPickupEvent({
+      donationId: row.id,
+      event: "listed",
+      note: check.verified ? "Address verified against the map pin." : check.reason,
+      actorId: context.userId,
+    });
+
+    return { id: row.id, addressVerified: check.verified, addressCheck: check.reason };
+  });
+
+/** Re-run address verification for one of the donor's own listings. */
+export const verifyDonationAddress = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => idSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: donation, error } = await context.supabase
+      .from("donations")
+      .select("id, address_line, city, lat, lng")
+      .eq("id", data.id)
+      .eq("donor_id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!donation) throw new Error("Donation not found");
+
+    const { verifyAddressAgainstPin } = await import("@/lib/geocode.server");
+    const check = await verifyAddressAgainstPin({
+      address: donation.address_line,
+      city: donation.city,
+      lat: donation.lat,
+      lng: donation.lng,
+    });
+
+    const { error: updateError } = await context.supabase
+      .from("donations")
+      .update({
+        address_verified: check.verified,
+        address_verified_at: check.verified ? new Date().toISOString() : null,
+        address_verified_label: check.label,
+      })
+      .eq("id", data.id)
+      .eq("donor_id", context.userId);
+    if (updateError) throw new Error(updateError.message);
+
+    const { logPickupEvent } = await import("@/lib/pickup-log.server");
+    await logPickupEvent({
+      donationId: data.id,
+      event: check.verified ? "address verified" : "address check failed",
+      note: check.reason,
+      actorId: context.userId,
+    });
+
+    return check;
+  });
+
+/** Donor or the claiming collector agrees an exact pickup time. */
+export const schedulePickup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), scheduled_at: z.string().min(1) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const when = new Date(data.scheduled_at);
+    if (Number.isNaN(when.getTime())) throw new Error("Pick a valid date and time");
+
+    const { data: donation, error } = await context.supabase
+      .from("donations")
+      .select("id, donor_id, claimed_by, status, title, pickup_from, pickup_until")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!donation) throw new Error("Donation not found");
+    if (donation.donor_id !== context.userId && donation.claimed_by !== context.userId) {
+      throw new Error("Only the donor or the assigned collector can schedule this pickup");
+    }
+    if (donation.status !== "open" && donation.status !== "claimed") {
+      throw new Error("This pickup can no longer be rescheduled");
+    }
+    if (when < new Date(donation.pickup_from) || when > new Date(donation.pickup_until)) {
+      throw new Error("Choose a time inside the pickup window");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: updateError } = await supabaseAdmin
+      .from("donations")
+      .update({ scheduled_at: when.toISOString() })
+      .eq("id", data.id);
+    if (updateError) throw new Error(updateError.message);
+
+    const { logPickupEvent, notifyUser } = await import("@/lib/pickup-log.server");
+    await logPickupEvent({
+      donationId: data.id,
+      event: "pickup scheduled",
+      note: when.toISOString(),
+      actorId: context.userId,
+    });
+
+    const counterparty =
+      context.userId === donation.donor_id ? donation.claimed_by : donation.donor_id;
+    if (counterparty) {
+      await notifyUser({
+        userId: counterparty,
+        kind: "schedule",
+        donationId: data.id,
+        title: "Pickup time set",
+        body: `“${donation.title}” is scheduled for ${when.toLocaleString("en-GB", { timeZone: "UTC" })} UTC.`,
+      });
+    }
+
+    return { scheduled_at: when.toISOString() };
+  });
+
+/** Timeline of everything that happened for a donation (donor or claimer only). */
+export const listPickupEvents = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => idSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("pickup_events")
+      .select("id, event, note, created_at")
+      .eq("donation_id", data.id)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
   });
 
 export const listMyDonations = createServerFn({ method: "GET" })
@@ -66,6 +201,9 @@ export const cancelDonation = createServerFn({ method: "POST" })
       .eq("donor_id", context.userId)
       .eq("status", "open");
     if (error) throw new Error(error.message);
+
+    const { logPickupEvent } = await import("@/lib/pickup-log.server");
+    await logPickupEvent({ donationId: data.id, event: "cancelled", actorId: context.userId });
     return { ok: true };
   });
 
@@ -136,7 +274,7 @@ export const claimDonation = createServerFn({ method: "POST" })
       })
       .eq("id", data.id)
       .eq("status", "open")
-      .select("id, pickup_until")
+      .select("id, pickup_until, donor_id, title")
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!claimed) throw new Error("This donation is no longer available");
@@ -154,6 +292,22 @@ export const claimDonation = createServerFn({ method: "POST" })
       attempts: 0,
     });
 
+    const { logPickupEvent, notifyUser } = await import("@/lib/pickup-log.server");
+    await logPickupEvent({
+      donationId: claimed.id,
+      event: "claimed",
+      note: "A verified collector claimed this pickup.",
+      actorId: context.userId,
+    });
+    await logPickupEvent({ donationId: claimed.id, event: "handover code issued" });
+    await notifyUser({
+      userId: claimed.donor_id,
+      kind: "otp",
+      donationId: claimed.id,
+      title: "Your handover code",
+      body: `A collector claimed “${claimed.title}”. Share code ${code} only at handover.`,
+    });
+
     return { ok: true };
   });
 
@@ -165,7 +319,7 @@ export const verifyPickupCode = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: donation, error } = await context.supabase
       .from("donations")
-      .select("id, status, claimed_by")
+      .select("id, status, claimed_by, donor_id, title")
       .eq("id", data.id)
       .eq("claimed_by", context.userId)
       .maybeSingle();
@@ -176,6 +330,7 @@ export const verifyPickupCode = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { hashPickupCode, constantTimeEqual } = await import("@/lib/pickup-code.server");
+    const { logPickupEvent, notifyUser } = await import("@/lib/pickup-log.server");
 
     const { data: row } = await supabaseAdmin
       .from("pickup_codes")
@@ -192,6 +347,11 @@ export const verifyPickupCode = createServerFn({ method: "POST" })
         .from("pickup_codes")
         .update({ attempts: row.attempts + 1 })
         .eq("donation_id", data.id);
+      await logPickupEvent({
+        donationId: data.id,
+        event: "incorrect code entered",
+        actorId: context.userId,
+      });
       throw new Error("That code doesn't match. Please check with the donor.");
     }
 
@@ -200,6 +360,20 @@ export const verifyPickupCode = createServerFn({ method: "POST" })
       .update({ status: "collected", collected_at: new Date().toISOString() })
       .eq("id", data.id);
     await supabaseAdmin.from("pickup_codes").delete().eq("donation_id", data.id);
+
+    await logPickupEvent({
+      donationId: data.id,
+      event: "collected",
+      note: "Handover code verified.",
+      actorId: context.userId,
+    });
+    await notifyUser({
+      userId: donation.donor_id,
+      kind: "collected",
+      donationId: data.id,
+      title: "Pickup completed",
+      body: `“${donation.title}” was collected and the handover code is now retired.`,
+    });
 
     return { ok: true, alreadyCollected: false };
   });
