@@ -94,8 +94,9 @@ function DonatePage() {
           lng: Number(form.lng),
         },
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast.success("Listed. Verified collectors near you can claim it now.");
+      if (!result.addressVerified) toast.warning(result.addressCheck);
       setForm((f) => ({ ...f, title: "", description: "" }));
       queryClient.invalidateQueries({ queryKey: ["my-donations"] });
     },
