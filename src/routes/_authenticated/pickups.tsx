@@ -243,10 +243,26 @@ function PickupsPage() {
                     {donation.contact_phone ? (
                       <p className="mt-1 text-xs text-muted-foreground">{donation.contact_phone}</p>
                     ) : null}
+                    {donation.scheduled_at ? (
+                      <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
+                        <CalendarClock className="h-3 w-3" /> Pickup at{" "}
+                        {new Date(donation.scheduled_at).toLocaleString()}
+                      </p>
+                    ) : null}
                   </div>
-                  <Badge variant={donation.status === "collected" ? "secondary" : "default"}>
-                    {donation.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge variant={donation.status === "collected" ? "secondary" : "default"}>
+                      {donation.status}
+                    </Badge>
+                    <Badge variant={donation.address_verified ? "secondary" : "outline"} className="gap-1">
+                      {donation.address_verified ? (
+                        <ShieldCheck className="h-3 w-3" />
+                      ) : (
+                        <ShieldAlert className="h-3 w-3" />
+                      )}
+                      {donation.address_verified ? "address verified" : "address unverified"}
+                    </Badge>
+                  </div>
                 </div>
 
                 {donation.lat && donation.lng ? (
@@ -259,39 +275,83 @@ function PickupsPage() {
                 ) : null}
 
                 {donation.status === "claimed" ? (
-                  <form
-                    className="mt-4 flex flex-wrap items-end gap-3"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      confirm.mutate({ id: donation.id, code: codeInputs[donation.id] ?? "" });
-                    }}
-                  >
-                    <div className="grid gap-2">
-                      <Label htmlFor={`code-${donation.id}`}>Handover code</Label>
-                      <Input
-                        id={`code-${donation.id}`}
-                        inputMode="numeric"
-                        pattern="\d{6}"
-                        maxLength={6}
-                        placeholder="000000"
-                        value={codeInputs[donation.id] ?? ""}
-                        onChange={(e) =>
-                          setCodeInputs((prev) => ({
-                            ...prev,
-                            [donation.id]: e.target.value.replace(/\D/g, "").slice(0, 6),
-                          }))
+                  <>
+                    <form
+                      className="mt-4 flex flex-wrap items-end gap-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const value = schedules[donation.id];
+                        if (!value) {
+                          toast.error("Pick a pickup date and time first.");
+                          return;
                         }
-                        className="w-40 font-mono tracking-[0.3em]"
-                        required
-                      />
-                    </div>
-                    <Button type="submit" disabled={confirm.isPending}>
-                      Confirm collection
-                    </Button>
-                  </form>
+                        book.mutate({ id: donation.id, scheduled_at: new Date(value).toISOString() });
+                      }}
+                    >
+                      <div className="grid gap-2">
+                        <Label htmlFor={`schedule-${donation.id}`}>Proposed pickup time</Label>
+                        <Input
+                          id={`schedule-${donation.id}`}
+                          type="datetime-local"
+                          value={
+                            schedules[donation.id] ??
+                            (donation.scheduled_at
+                              ? new Date(
+                                  new Date(donation.scheduled_at).getTime() -
+                                    new Date().getTimezoneOffset() * 60_000,
+                                )
+                                  .toISOString()
+                                  .slice(0, 16)
+                              : "")
+                          }
+                          onChange={(e) =>
+                            setSchedules((prev) => ({ ...prev, [donation.id]: e.target.value }))
+                          }
+                          className="w-56"
+                        />
+                      </div>
+                      <Button type="submit" size="sm" variant="outline" disabled={book.isPending}>
+                        Save time
+                      </Button>
+                    </form>
+
+                    <form
+                      className="mt-4 flex flex-wrap items-end gap-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        confirm.mutate({ id: donation.id, code: codeInputs[donation.id] ?? "" });
+                      }}
+                    >
+                      <div className="grid gap-2">
+                        <Label htmlFor={`code-${donation.id}`}>Handover code</Label>
+                        <Input
+                          id={`code-${donation.id}`}
+                          inputMode="numeric"
+                          pattern="\d{6}"
+                          maxLength={6}
+                          placeholder="000000"
+                          value={codeInputs[donation.id] ?? ""}
+                          onChange={(e) =>
+                            setCodeInputs((prev) => ({
+                              ...prev,
+                              [donation.id]: e.target.value.replace(/\D/g, "").slice(0, 6),
+                            }))
+                          }
+                          className="w-40 font-mono tracking-[0.3em]"
+                          required
+                        />
+                      </div>
+                      <Button type="submit" disabled={confirm.isPending}>
+                        Confirm collection
+                      </Button>
+                    </form>
+                  </>
                 ) : null}
+
+                <PickupTimeline donationId={donation.id} />
               </li>
             ))}
+
           </ul>
         )}
       </section>
