@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/useAuth";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/NotificationBell";
+
 
 const NAV = [
   { to: "/", label: "Home" },
@@ -53,7 +55,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               ))}
             </nav>
+            {user ? <NotificationBell /> : null}
             {user ? (
+
               <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Sign out</span>
