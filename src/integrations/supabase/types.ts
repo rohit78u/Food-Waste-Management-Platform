@@ -59,6 +59,9 @@ export type Database = {
       donations: {
         Row: {
           address_line: string
+          address_verified: boolean
+          address_verified_at: string | null
+          address_verified_label: string | null
           approx_lat: number
           approx_lng: number
           best_before: string | null
@@ -77,6 +80,7 @@ export type Database = {
           pickup_from: string
           pickup_until: string
           quantity: number
+          scheduled_at: string | null
           status: Database["public"]["Enums"]["donation_status"]
           title: string
           unit: string
@@ -84,6 +88,9 @@ export type Database = {
         }
         Insert: {
           address_line: string
+          address_verified?: boolean
+          address_verified_at?: string | null
+          address_verified_label?: string | null
           approx_lat: number
           approx_lng: number
           best_before?: string | null
@@ -102,6 +109,7 @@ export type Database = {
           pickup_from: string
           pickup_until: string
           quantity: number
+          scheduled_at?: string | null
           status?: Database["public"]["Enums"]["donation_status"]
           title: string
           unit?: string
@@ -109,6 +117,9 @@ export type Database = {
         }
         Update: {
           address_line?: string
+          address_verified?: boolean
+          address_verified_at?: string | null
+          address_verified_label?: string | null
           approx_lat?: number
           approx_lng?: number
           best_before?: string | null
@@ -127,12 +138,54 @@ export type Database = {
           pickup_from?: string
           pickup_until?: string
           quantity?: number
+          scheduled_at?: string | null
           status?: Database["public"]["Enums"]["donation_status"]
           title?: string
           unit?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          donation_id: string | null
+          id: string
+          kind: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          donation_id?: string | null
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          donation_id?: string | null
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_donation_id_fkey"
+            columns: ["donation_id"]
+            isOneToOne: false
+            referencedRelation: "donations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pickup_codes: {
         Row: {
@@ -164,6 +217,41 @@ export type Database = {
             foreignKeyName: "pickup_codes_donation_id_fkey"
             columns: ["donation_id"]
             isOneToOne: true
+            referencedRelation: "donations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pickup_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          donation_id: string
+          event: string
+          id: string
+          note: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          donation_id: string
+          event: string
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          donation_id?: string
+          event?: string
+          id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pickup_events_donation_id_fkey"
+            columns: ["donation_id"]
+            isOneToOne: false
             referencedRelation: "donations"
             referencedColumns: ["id"]
           },
