@@ -99,14 +99,26 @@ function PickupsPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const confirm = useMutation({
-    mutationFn: ({ id, code }: { id: string; code: string }) => verify({ data: { id, code } }),
-    onSuccess: () => {
-      toast.success("Pickup confirmed. Thank you!");
+  const book = useMutation({
+    mutationFn: (input: { id: string; scheduled_at: string }) => schedule({ data: input }),
+    onSuccess: (_result, input) => {
+      toast.success("Pickup time saved. The donor has been notified.");
       queryClient.invalidateQueries({ queryKey: ["my-claims"] });
+      queryClient.invalidateQueries({ queryKey: ["pickup-events", input.id] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const confirm = useMutation({
+    mutationFn: ({ id, code }: { id: string; code: string }) => verify({ data: { id, code } }),
+    onSuccess: (_result, input) => {
+      toast.success("Pickup confirmed. Thank you!");
+      queryClient.invalidateQueries({ queryKey: ["my-claims"] });
+      queryClient.invalidateQueries({ queryKey: ["pickup-events", input.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
 
   if (!isCollector) {
     const pending = status.data?.application?.status === "pending";
