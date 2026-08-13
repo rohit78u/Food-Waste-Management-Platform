@@ -4,6 +4,15 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class UserOut(BaseModel):
+    id: str
+    email: str
+    role: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class WasteEntryCreate(BaseModel):
     item: str = Field(min_length=1, max_length=120)
     category: str = Field(min_length=1, max_length=40)
@@ -18,6 +27,8 @@ class WasteEntryOut(WasteEntryCreate):
     id: str
     user_id: str
     created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class DonationCreate(BaseModel):
@@ -48,6 +59,12 @@ class DonationOut(DonationCreate):
     address_verified_label: Optional[str] = None
     created_at: datetime
 
+    model_config = {"from_attributes": True}
+
+
+class NearbyDonationOut(DonationOut):
+    distance_km: float
+
 
 class CollectorApplicationCreate(BaseModel):
     organization: str = Field(min_length=2, max_length=160)
@@ -61,6 +78,8 @@ class CollectorApplicationOut(CollectorApplicationCreate):
     user_id: str
     status: str
     created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class CollectorStatusOut(BaseModel):
@@ -79,7 +98,7 @@ class SchedulePickupInput(BaseModel):
 
 class VerifyCodeInput(BaseModel):
     id: str
-    code: str
+    code: str = Field(min_length=6, max_length=8)
 
 
 class PickupEventOut(BaseModel):
@@ -90,6 +109,8 @@ class PickupEventOut(BaseModel):
     actor_id: Optional[str] = None
     created_at: datetime
 
+    model_config = {"from_attributes": True}
+
 
 class NotificationOut(BaseModel):
     id: str
@@ -97,3 +118,5 @@ class NotificationOut(BaseModel):
     body: str
     read_at: Optional[datetime] = None
     created_at: datetime
+
+    model_config = {"from_attributes": True}
