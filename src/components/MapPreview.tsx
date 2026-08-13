@@ -1,7 +1,6 @@
 interface MapPreviewProps {
   lat: number;
   lng: number;
-  /** Larger span = more zoomed out; use for approximate pins. */
   span?: number;
   label?: string;
   className?: string;
@@ -18,6 +17,7 @@ export function MapPreview({ lat, lng, span = 0.008, label, className }: MapPrev
         title={label ?? "Pickup location map"}
         src={src}
         loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
         className="h-full min-h-48 w-full rounded-xl border border-border"
       />
     </div>
