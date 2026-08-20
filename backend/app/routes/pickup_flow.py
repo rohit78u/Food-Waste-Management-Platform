@@ -1,7 +1,8 @@
 import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -25,7 +26,7 @@ def _new_handover_code() -> str:
 
 
 @router.get("/open", response_model=list[DonationOut])
-def list_open_donations(db: Session = Depends(get_db)):
+def list_open_donations(_: User = Depends(require_collector), db: Session = Depends(get_db)):
     return db.query(Donation).filter(Donation.status == "open").order_by(Donation.created_at.desc()).all()
 
 
@@ -43,14 +44,20 @@ def claim_donation(
     donation = db.query(Donation).filter(Donation.id == payload.id).first()
     if not donation:
         raise HTTPException(status_code=404, detail="Donation not found")
-    if donation.status != "open":
-        raise HTTPException(status_code=409, detail="Donation is no longer available")
     if donation.donor_id == user.id:
         raise HTTPException(status_code=400, detail="Donors cannot claim their own donation")
 
-    donation.status = "claimed"
-    donation.claimed_by = user.id
-    donation.handover_code = _new_handover_code()
+    handover_code = _new_handover_code()
+    result = db.execute(
+        update(Donation)
+        .where(Donation.id == payload.id, Donation.status == "open", Donation.claimed_by.is_(None))
+        .values(status="claimed", claimed_by=user.id, handover_code=handover_code)
+    )
+    if result.rowcount != 1:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Donation is no longer available")
+
+    db.refresh(donation)
     _emit_event(db, donation.id, "claimed", "Collector claimed the donation", actor_id=user.id)
     _emit_notification(db, donation.donor_id, "Pickup claimed", f"A collector claimed {donation.title}")
     db.commit()
@@ -107,7 +114,7 @@ def list_events(
     db: Session = Depends(get_db),
 ):
     donation = db.query(Donation).filter(Donation.id == donation_id).first()
-    if not donation or donation.donor_id != user.id and donation.claimed_by != user.id and user.role != "admin":
+    if not donation or (donation.donor_id != user.id and donation.claimed_by != user.id and user.role != "admin"):
         raise HTTPException(status_code=403, detail="You cannot view this pickup history")
     return db.query(PickupEvent).filter(PickupEvent.donation_id == donation_id).order_by(PickupEvent.created_at.desc()).all()
 
