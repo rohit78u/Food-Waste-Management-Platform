@@ -54,7 +54,6 @@ class DonationOut(DonationCreate):
     status: str
     claimed_by: Optional[str] = None
     scheduled_at: Optional[datetime] = None
-    handover_code: Optional[str] = None
     address_verified: bool
     address_verified_label: Optional[str] = None
     created_at: datetime
@@ -64,6 +63,11 @@ class DonationOut(DonationCreate):
 
 class NearbyDonationOut(DonationOut):
     distance_km: float
+
+
+class HandoverCodeOut(BaseModel):
+    ok: bool = True
+    handover_code: str
 
 
 class CollectorApplicationCreate(BaseModel):
@@ -98,7 +102,7 @@ class SchedulePickupInput(BaseModel):
 
 class VerifyCodeInput(BaseModel):
     id: str
-    code: str = Field(min_length=6, max_length=8)
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 
 class PickupEventOut(BaseModel):
