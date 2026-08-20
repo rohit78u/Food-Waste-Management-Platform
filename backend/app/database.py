@@ -10,7 +10,7 @@ Base = declarative_base()
 
 
 def init_db():
-    Base.metadata.drop_all(bind=engine)
+    # Create missing tables without destroying existing application data.
     Base.metadata.create_all(bind=engine)
 
 

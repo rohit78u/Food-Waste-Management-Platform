@@ -18,11 +18,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(message || "Request failed");
   }
 
-  if (response.status === 204) {
-    return {} as T;
-  }
-
+  if (response.status === 204) return {} as T;
   return response.json() as Promise<T>;
+}
+
+export async function getCurrentUser() {
+  return request<any>("/auth/me");
 }
 
 export async function listWasteEntries() {
@@ -30,16 +31,11 @@ export async function listWasteEntries() {
 }
 
 export async function createWasteEntry(payload: Record<string, unknown>) {
-  return request<any>("/waste", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return request<any>("/waste", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export async function deleteWasteEntry(id: string) {
-  return request<any>(`/waste/${id}`, {
-    method: "DELETE",
-  });
+  return request<any>(`/waste/${id}`, { method: "DELETE" });
 }
 
 export async function getReportSummary(days: number) {
@@ -50,17 +46,17 @@ export async function listDonations() {
   return request<any[]>("/donations");
 }
 
+export async function listNearbyDonations(lat: number, lng: number, radiusKm = 10) {
+  const params = new URLSearchParams({ lat: String(lat), lng: String(lng), radius_km: String(radiusKm) });
+  return request<any[]>(`/donations/nearby?${params.toString()}`);
+}
+
 export async function createDonation(payload: Record<string, unknown>) {
-  return request<any>("/donations", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return request<any>("/donations", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export async function deleteDonation(id: string) {
-  return request<any>(`/donations/${id}`, {
-    method: "DELETE",
-  });
+  return request<any>(`/donations/${id}`, { method: "DELETE" });
 }
 
 export async function getDonationCode(id: string) {
@@ -68,10 +64,7 @@ export async function getDonationCode(id: string) {
 }
 
 export async function createCollectorApplication(payload: Record<string, unknown>) {
-  return request<any>("/auth/collector-applications", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return request<any>("/auth/collector-applications", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export async function getCollectorStatus() {
@@ -87,24 +80,15 @@ export async function listMyClaims() {
 }
 
 export async function claimDonation(id: string) {
-  return request<any>("/pickups/claim", {
-    method: "POST",
-    body: JSON.stringify({ id }),
-  });
+  return request<any>("/pickups/claim", { method: "POST", body: JSON.stringify({ id }) });
 }
 
 export async function schedulePickup(id: string, scheduledAt: string) {
-  return request<any>("/pickups/schedule", {
-    method: "POST",
-    body: JSON.stringify({ id, scheduled_at: scheduledAt }),
-  });
+  return request<any>("/pickups/schedule", { method: "POST", body: JSON.stringify({ id, scheduled_at: scheduledAt }) });
 }
 
 export async function verifyPickupCode(id: string, code: string) {
-  return request<any>("/pickups/verify", {
-    method: "POST",
-    body: JSON.stringify({ id, code }),
-  });
+  return request<any>("/pickups/verify", { method: "POST", body: JSON.stringify({ id, code }) });
 }
 
 export async function listPickupEvents(donationId: string) {
@@ -116,24 +100,19 @@ export async function listNotifications() {
 }
 
 export async function markNotificationsRead() {
-  return request<any>("/pickups/notifications/read", {
-    method: "POST",
-  });
+  return request<any>("/pickups/notifications/read", { method: "POST" });
 }
 
-// Admin endpoints
 export async function getAdminStats() {
   return request<any>("/admin/stats");
 }
 
 export async function listAllCollectors(status?: string) {
-  const query = status ? `?status=${status}` : "";
-  return request<any[]>(`/admin/collectors${query}`);
+  return request<any[]>(`/admin/collectors${status ? `?status=${encodeURIComponent(status)}` : ""}`);
 }
 
 export async function listAllDonations(status?: string) {
-  const query = status ? `?status=${status}` : "";
-  return request<any[]>(`/admin/donations${query}`);
+  return request<any[]>(`/admin/donations${status ? `?status=${encodeURIComponent(status)}` : ""}`);
 }
 
 export async function listAllWaste() {
@@ -141,20 +120,16 @@ export async function listAllWaste() {
 }
 
 export async function verifyCollector(collectorId: string) {
-  return request<any>(`/admin/verify-collector/${collectorId}`, {
-    method: "POST",
-  });
+  return request<any>(`/admin/verify-collector/${collectorId}`, { method: "POST" });
 }
 
 export async function rejectCollector(collectorId: string, reason?: string) {
-  const body = reason ? { reason } : {};
   return request<any>(`/admin/reject-collector/${collectorId}`, {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify({ reason: reason || "" }),
   });
 }
 
 export async function getPickupEvents(donationId?: string) {
-  const query = donationId ? `?donation_id=${donationId}` : "";
-  return request<any[]>(`/admin/pickup-events${query}`);
+  return request<any[]>(`/admin/pickup-events${donationId ? `?donation_id=${encodeURIComponent(donationId)}` : ""}`);
 }
